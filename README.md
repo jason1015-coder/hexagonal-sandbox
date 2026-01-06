@@ -20,11 +20,7 @@ macOS:
 
 
 
-##license
-
-Here's a software license that meets your requirements:
-
-*License*
+## license
 
 Copyright <2026> <Yi Shun CHIU>
 
