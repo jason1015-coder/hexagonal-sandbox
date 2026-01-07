@@ -35,4 +35,4 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 *MIT License*
 
-The MIT License is a permissive license that allows users to freely use, modify, and distribute software ¹.
+The MIT License is a permissive license that allows users to freely use, modify, and distribute software .
