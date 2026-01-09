@@ -2,21 +2,24 @@
 a game similar to terraria but in hexagons
 
 
-# community and contriibution
+## community and contriibution
 Welcome feature request, report bugs, suggest enhancements
 
-##how to contribute
-# how to install
+**how to contribute**
+## how to install
 
-## Windows:(not yet ready)
-
-## linux:(not yet ready)
-
-## macOS:(not yet ready)
-
+**Windows:** not yet ready
+```bash
+```
+**linux:** not yet ready
+```bash
+```
+**macOS:** not yet ready
+```bash
+```
 # thanks to nanocoder
 
-this project is done using nano-collective's work nanocoder
+** this project is done using nano-collective's work nanocoder**
 
 link for nano-collective(https://nanocollective.org/)
 
