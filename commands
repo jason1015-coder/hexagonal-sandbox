@@ -19,12 +19,11 @@ git push -u origin main
 #update 
 
 
-
 # Stage your changes
 git add .
 
-# Commit with a message
-git commit -m "game base update"
+# Commit your changes
+git commit -m "initialization"
 
 # Push to GitHub
-git push origin main --force
+git push origin main
