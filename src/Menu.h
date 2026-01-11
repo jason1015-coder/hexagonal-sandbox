@@ -27,7 +27,7 @@ private:
     
     // UI elements
     sf::Font font;
-    sf::Text titleText;
+    sf::Text titleText; // Initialize later after font is loaded
     std::vector<sf::Text> menuItems;
     int selectedIndex;
     

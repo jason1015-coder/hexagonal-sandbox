@@ -63,8 +63,8 @@ sf::Color hslToRgb(float h, float s, float l) {
     }
     
     return sf::Color(
-        static_cast<sf::Uint8>((r + m) * 255),
-        static_cast<sf::Uint8>((g + m) * 255),
-        static_cast<sf::Uint8>((b + m) * 255)
+        static_cast<std::uint8_t>((r + m) * 255),
+        static_cast<std::uint8_t>((g + m) * 255),
+        static_cast<std::uint8_t>((b + m) * 255)
     );
 }

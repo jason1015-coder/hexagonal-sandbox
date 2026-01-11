@@ -5,6 +5,7 @@
 #include "WeatherSystem.h"
 #include <cmath>
 #include <fstream>
+#include <algorithm>
 
 WeatherSystem::WeatherSystem() 
     : currentWeather(WeatherType::CLEAR), weatherDuration(30.0f), 

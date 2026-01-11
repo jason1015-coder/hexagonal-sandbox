@@ -65,7 +65,9 @@ void Menu::setupMainMenu() {
     menuItems.clear();
     
     // Title
-    titleText = sf::Text("HEXA WORLD", font, 72);
+    titleText.setFont(font);
+    titleText.setString("Inhexit");
+    titleText.setCharacterSize(72);
     titleText.setFillColor(sf::Color(255, 200, 100));
     sf::FloatRect titleBounds = titleText.getLocalBounds();
     titleText.setPosition(sf::Vector2f(WINDOW_WIDTH / 2 - titleBounds.width / 2, 100));
@@ -94,7 +96,9 @@ void Menu::setupSettingsMenu() {
     menuItems.clear();
     
     // Title
-    titleText = sf::Text("SETTINGS", font, 60);
+    titleText.setFont(font);
+    titleText.setString("SETTINGS");
+    titleText.setCharacterSize(60);
     titleText.setFillColor(sf::Color(255, 200, 100));
     sf::FloatRect titleBounds = titleText.getLocalBounds();
     titleText.setPosition(sf::Vector2f(WINDOW_WIDTH / 2 - titleBounds.width / 2, 100));
@@ -120,7 +124,9 @@ void Menu::setupMultiplayerMenu() {
     menuItems.clear();
     
     // Title
-    titleText = sf::Text("MULTIPLAYER", font, 60);
+    titleText.setFont(font);
+    titleText.setString("MULTIPLAYER");
+    titleText.setCharacterSize(60);
     titleText.setFillColor(sf::Color(255, 200, 100));
     sf::FloatRect titleBounds = titleText.getLocalBounds();
     titleText.setPosition(sf::Vector2f(WINDOW_WIDTH / 2 - titleBounds.width / 2, 100));
@@ -201,7 +207,7 @@ void Menu::updateAnimatedBackground() {
         backgroundHexagons[i].setPosition(pos);
         
         // Pulse alpha
-        sf::Uint8 alpha = 150 + static_cast<sf::Uint8>(std::sin(backgroundOffset * 0.05f + i * 0.2f) * 50);
+        std::uint8_t alpha = 150 + static_cast<std::uint8_t>(std::sin(backgroundOffset * 0.05f + i * 0.2f) * 50);
         sf::Color color = backgroundHexagons[i].getFillColor();
         color.a = alpha;
         backgroundHexagons[i].setFillColor(color);
@@ -253,15 +259,14 @@ void Menu::render(sf::RenderWindow& window) {
 
 void Menu::handleInput(sf::RenderWindow& window, const sf::Event& event, MenuState& currentState) {
     if (event.type == sf::Event::KeyPressed) {
-        auto& keyEvent = event.key;
-        switch (keyEvent.code) {
+        switch (event.key.code) {
             case sf::Keyboard::Up:
                 selectedIndex = (selectedIndex - 1 + menuItems.size()) % menuItems.size();
                 break;
             case sf::Keyboard::Down:
                 selectedIndex = (selectedIndex + 1) % menuItems.size();
                 break;
-            case sf::Keyboard::Enter:
+            case sf::Keyboard::Return:
                 processSelection();
                 currentState = this->currentState;
                 break;
@@ -284,17 +289,16 @@ void Menu::handleInput(sf::RenderWindow& window, const sf::Event& event, MenuSta
                 break;
         }
     } else if (event.type == sf::Event::MouseMoved) {
-        auto& mouseEvent = event.mouseMove;
-        sf::Vector2i mousePos(mouseEvent.x, mouseEvent.y);
+        sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x), 
+                             static_cast<float>(event.mouseMove.y));
         for (size_t i = 0; i < menuItems.size(); i++) {
             sf::FloatRect bounds = menuItems[i].getGlobalBounds();
-            if (bounds.contains(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y))) {
+            if (bounds.contains(mousePos)) {
                 selectedIndex = i;
             }
         }
     } else if (event.type == sf::Event::MouseButtonPressed) {
-        auto& mouseEvent = event.mouseButton;
-        if (mouseEvent.button == sf::Mouse::Button::Left) {
+        if (event.mouseButton.button == sf::Mouse::Left) {
             processSelection();
             currentState = this->currentState;
         }
@@ -379,8 +383,8 @@ sf::Color Menu::hslToRgb(float h, float s, float l) {
     }
     
     return sf::Color(
-        static_cast<sf::Uint8>((r + m) * 255),
-        static_cast<sf::Uint8>((g + m) * 255),
-        static_cast<sf::Uint8>((b + m) * 255)
+        static_cast<std::uint8_t>((r + m) * 255),
+        static_cast<std::uint8_t>((g + m) * 255),
+        static_cast<std::uint8_t>((b + m) * 255)
     );
 }

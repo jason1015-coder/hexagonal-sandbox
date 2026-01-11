@@ -259,7 +259,7 @@ void InventorySystem::render(sf::RenderWindow& window) const {
         // Render item
         if (slot.item != ItemType::NONE) {
             sf::CircleShape itemShape(15);
-            itemShape.setPosition(slot.position.x + 10, slot.position.y + 10);
+            itemShape.setPosition({slot.position.x + 10, slot.position.y + 10});
             
             // Color based on item type
             sf::Color itemColor;
@@ -292,7 +292,7 @@ void InventorySystem::render(sf::RenderWindow& window) const {
     if (isBackpackOpen) {
         // Background
         sf::RectangleShape backpackBg(sf::Vector2f(450, 200));
-        backpackBg.setPosition(180, 130);
+        backpackBg.setPosition({180, 130});
         backpackBg.setFillColor(sf::Color(30, 30, 30, 230));
         backpackBg.setOutlineColor(sf::Color(150, 150, 150));
         backpackBg.setOutlineThickness(2);
@@ -311,7 +311,7 @@ void InventorySystem::render(sf::RenderWindow& window) const {
             
             if (slot.item != ItemType::NONE) {
                 sf::CircleShape itemShape(12);
-                itemShape.setPosition(slot.position.x + 6, slot.position.y + 6);
+                itemShape.setPosition({slot.position.x + 6, slot.position.y + 6});
                 
                 sf::Color itemColor;
                 switch (slot.item) {

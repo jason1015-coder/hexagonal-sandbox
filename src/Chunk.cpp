@@ -67,7 +67,7 @@ void Chunk::render(sf::RenderWindow& window, const sf::View& view) {
     const float hexWidth = HEX_SIZE * 2.0f;
     const float hexHeight = HEX_SIZE * std::sqrt(3.0f);
     
-    // SFML 2.5 compatible: Use .left/.top/.width/.height
+    // SFML 2.x compatible: Use .left/.top/.width/.height
     sf::FloatRect viewBounds;
     viewBounds.left = view.getCenter().x - view.getSize().x / 2.0f;
     viewBounds.top = view.getCenter().y - view.getSize().y / 2.0f;
@@ -87,15 +87,16 @@ void Chunk::render(sf::RenderWindow& window, const sf::View& view) {
             sf::Vector2f center = HexCoord(globalQ, globalR).toPixel(HEX_SIZE);
             
             // Culling check
-            if (center.x + hexWidth < viewBounds.left || 
+            if (center.x + hexWidth < viewBounds.left ||
                 center.x - hexWidth > viewBounds.left + viewBounds.width ||
                 center.y + hexHeight < viewBounds.top ||
-                center.y - hexHeight > viewBounds.top + viewBounds.height) {
+                center.y - hexHeight > viewBounds.top + viewBounds.height) 
+            {
                 continue;
             }
             
             // Get hexagon vertices using the exact same method everywhere
-            float size = currentLOD == LODLevel::MEDIUM ? HEX_SIZE * 0.95f : HEX_SIZE;
+            float size = (currentLOD == LODLevel::MEDIUM) ? (HEX_SIZE * 0.95f) : HEX_SIZE;
             std::vector<sf::Vector2f> vertices = getHexagonVertices(size, center);
             
             // Set hexagon shape
@@ -124,14 +125,14 @@ void Chunk::renderLOD(sf::RenderWindow& window, const sf::View& /*view*/) {
     sf::RectangleShape chunkRect;
     chunkRect.setSize({CHUNK_SIZE * HEX_SIZE * 1.5f, CHUNK_HEIGHT * HEX_SIZE * std::sqrt(3.0f)});
     
-    // SFML 3 Fix: setPosition now requires a Vector2 or initializer list
-    chunkRect.setPosition({worldX, worldY});
+    chunkRect.setPosition(sf::Vector2f(worldX, worldY));
     
     // Calculate dominant block type for chunk color
     int blockCounts[10] = {0};
     for (const auto& block : blocks) {
-        if (block != BlockType::AIR) {
-            blockCounts[static_cast<int>(block)]++;
+        int idx = static_cast<int>(block);
+        if (block != BlockType::AIR && idx >= 0 && idx < 10) {
+            blockCounts[idx]++;
         }
     }
     

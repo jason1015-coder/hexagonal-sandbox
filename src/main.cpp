@@ -10,7 +10,7 @@
 int main() {
     try {
         // Create game instance with 1280x720 resolution
-        Game game(1280, 720, "Hexagon Sandbox");
+        Game game(1280, 720, "Inhexit");
         
         // Run the game main loop
         game.run();

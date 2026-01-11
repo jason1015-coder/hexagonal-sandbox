@@ -31,10 +31,13 @@ bool MultiplayerClient::connect(const std::string& address, unsigned short port,
     
     std::cout << "Connecting to " << address << ":" << port << " as " << name << std::endl;
     
+    // SFML 2.x: IpAddress constructor accepts string directly
+    sf::IpAddress serverAddress(address);
+    
     // Attempt to connect
     sf::Socket::Status status = socket.connect(serverAddress, serverPort);
     
-    if (status != sf::Socket::Done) {
+    if (status != sf::Socket::Status::Done) {
         std::cerr << "Failed to connect to server" << std::endl;
         return false;
     }
@@ -73,12 +76,12 @@ void MultiplayerClient::networkLoop() {
         // Receive data
         sf::Socket::Status status = socket.receive(buffer, sizeof(buffer), received);
         
-        if (status == sf::Socket::Done) {
+        if (status == sf::Socket::Status::Done) {
             std::string message(buffer, received);
             
             std::lock_guard<std::mutex> lock(receiveMutex);
             receiveQueue.push(message);
-        } else if (status == sf::Socket::Disconnected) {
+        } else if (status == sf::Socket::Status::Disconnected) {
             std::cout << "Server disconnected" << std::endl;
             connected = false;
             break;
@@ -104,7 +107,10 @@ void MultiplayerClient::update() {
             std::string message = sendQueue.front();
             sendQueue.pop();
             
-            socket.send(message.c_str(), message.size());
+            auto status = socket.send(message.c_str(), message.size());
+            if (status == sf::Socket::Status::Disconnected) {
+                connected = false;
+            }
         }
     }
 }
