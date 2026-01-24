@@ -58,6 +58,35 @@ CHUNK_WIDTH = CHUNK_SIZE * HEX_WIDTH
 CHUNK_HEIGHT = CHUNK_SIZE * HEX_V_SPACING
 RENDER_DISTANCE = 4  # Number of chunks to render around player
 
+def pixel_to_hex_center(wx, wy, hex_size=HEX_SIZE):
+    """Convert world pixel coords → nearest hex center (pointy-top, odd-r)"""
+    q = (math.sqrt(3)/3 * wx  +  1/3 * wy) / hex_size
+    r = (                     -math.sqrt(3)/3 * wx  +  2/3 * wy) / hex_size
+    
+    # Cube rounding (very reliable)
+    x = q
+    z = r
+    y = -x - z
+    
+    rx = round(x)
+    ry = round(y)
+    rz = round(z)
+    
+    x_diff = abs(rx - x)
+    y_diff = abs(ry - y)
+    z_diff = abs(rz - z)
+    
+    if x_diff > y_diff and x_diff > z_diff:
+        rx = -ry - rz
+    elif y_diff > z_diff:
+        ry = -rx - rz
+    else:
+        rz = -rx - ry
+        
+    # Back to pixel center
+    center_x = hex_size * math.sqrt(3) * (rx + rz/2.0)
+    center_y = hex_size * 1.5 * rz
+    return center_x, center_y, int(rx), int(rz)   # return pixel + axial q,r
 
 
 class Particle:
@@ -176,21 +205,30 @@ class Chunk:
     
     def add_hexagon(self, x, y, hexagon):
         # Convert world position to local chunk coordinates
-        local_x = int((x - self.chunk_x * CHUNK_WIDTH) // HEX_WIDTH)
-        local_y = int((y - self.chunk_y * CHUNK_HEIGHT) // HEX_V_SPACING)
+        world_x = self.chunk_x * CHUNK_WIDTH
+        world_y = self.chunk_y * CHUNK_HEIGHT
+        local_y = int((y - world_y) / HEX_V_SPACING)
+        x_offset = (HEX_WIDTH / 2) if local_y % 2 == 1 else 0
+        local_x = int((x - world_x - x_offset + HEX_WIDTH / 2) / HEX_WIDTH)
         hexagon.chunk_x = self.chunk_x
         hexagon.chunk_y = self.chunk_y
         self.hexagons[(local_x, local_y)] = hexagon
         self.modified = True
         
     def get_hexagon(self, x, y):
-        local_x = int((x - self.chunk_x * CHUNK_WIDTH) // HEX_WIDTH)
-        local_y = int((y - self.chunk_y * CHUNK_HEIGHT) // HEX_V_SPACING)
+        world_x = self.chunk_x * CHUNK_WIDTH
+        world_y = self.chunk_y * CHUNK_HEIGHT
+        local_y = int((y - world_y) / HEX_V_SPACING)
+        x_offset = (HEX_WIDTH / 2) if local_y % 2 == 1 else 0
+        local_x = int((x - world_x - x_offset + HEX_WIDTH / 2) / HEX_WIDTH)
         return self.hexagons.get((local_x, local_y))
     
     def remove_hexagon(self, x, y):
-        local_x = int((x - self.chunk_x * CHUNK_WIDTH) // HEX_WIDTH)
-        local_y = int((y - self.chunk_y * CHUNK_HEIGHT) // HEX_V_SPACING)
+        world_x = self.chunk_x * CHUNK_WIDTH
+        world_y = self.chunk_y * CHUNK_HEIGHT
+        local_y = int((y - world_y) / HEX_V_SPACING)
+        x_offset = (HEX_WIDTH / 2) if local_y % 2 == 1 else 0
+        local_x = int((x - world_x - x_offset + HEX_WIDTH / 2) / HEX_WIDTH)
         if (local_x, local_y) in self.hexagons:
             del self.hexagons[(local_x, local_y)]
             self.modified = True
@@ -224,36 +262,8 @@ class World:
         
         ground_y = base_ground_y + height_variation
         
-        # Fill from surface down
-        for local_row in range(CHUNK_SIZE):
-            for local_col in range(CHUNK_SIZE):
-                x_offset = (HEX_WIDTH / 2) if local_row % 2 == 1 else 0
-                hx = world_x + local_col * HEX_WIDTH + x_offset - HEX_WIDTH / 2
-                hy = ground_y + local_row * HEX_V_SPACING
-                
-                depth = local_row
-                
-                if depth == 0:
-                    block_type = "grass"
-                elif depth <= 4:
-                    block_type = "dirt"
-                elif depth <= 12:
-                    block_type = "stone"
-                    if random.random() < 0.07:
-                        block_type = "coal"
-                elif depth <= 25:
-                    block_type = "stone"
-                    r = random.random()
-                    if r < 0.04: block_type = "iron"
-                    elif r < 0.07: block_type = "coal"
-                else:
-                    block_type = "stone"
-                    r = random.random()
-                    if r < 0.025: block_type = "gold"
-                    elif r < 0.045: block_type = "diamond"
-                
-                hex_obj = Hexagon(hx, hy, HEX_SIZE, block_type)
-                chunk.add_hexagon(hx, hy, hex_obj)
+        # (removed the simple depth-based generation loop above)
+        # Only the biome-aware generation remains
         
         for local_row in range(CHUNK_SIZE):
             for local_col in range(CHUNK_SIZE):
@@ -261,60 +271,43 @@ class World:
                 x = world_x + local_col * HEX_WIDTH + x_offset - HEX_WIDTH / 2
                 y = ground_y + local_row * HEX_V_SPACING
                 
-                # Use simple noise for biome determination
-                
-                # Determine biome based on chunk position
-                biome = "plains"
+                # Biome
                 biome_noise = np.sin(chunk_x * 0.3 + self.seed) * np.cos(chunk_y * 0.3 + self.seed)
-                if biome_noise < -0.3:
+                if biome_noise < -0.35:
                     biome = "desert"
-                elif biome_noise > 0.3:
+                elif biome_noise > 0.35:
                     biome = "mountain"
-                elif -0.1 < biome_noise < 0.1:
+                elif abs(biome_noise) < 0.12:
                     biome = "forest"
-                
-                # Determine block type based on depth and biome
-                depth = local_row
-                if depth == 0:
-                    if biome == "desert":
-                        block_type = 'sand'
-                    elif biome == "forest":
-                        block_type = 'grass'
-                    else:
-                        block_type = 'grass'
-                elif depth < 3:
-                    if biome == "desert":
-                        block_type = 'sand'
-                    else:
-                        block_type = 'dirt'
-                elif depth < 6:
-                    if random.random() < 0.1:
-                        block_type = 'coal'
-                    else:
-                        block_type = 'stone'
-                elif depth < 12:
-                    rand_val = random.random()
-                    if rand_val < 0.05:
-                        block_type = 'coal'
-                    elif rand_val < 0.08:
-                        block_type = 'iron'
-                    else:
-                        block_type = 'stone'
                 else:
-                    rand_val = random.random()
-                    if rand_val < 0.03:
-                        block_type = 'coal'
-                    elif rand_val < 0.05:
-                        block_type = 'iron'
-                    elif rand_val < 0.06:
-                        block_type = 'gold'
-                    elif rand_val < 0.07 and biome == "mountain":
-                        block_type = 'diamond'
-                    else:
-                        block_type = 'stone'
+                    biome = "plains"
+                
+                depth = local_row
+                
+                if depth == 0:
+                    block_type = 'sand' if biome == "desert" else 'grass'
+                elif depth <= 3:
+                    block_type = 'sand' if biome == "desert" else 'dirt'
+                elif depth <= 7:
+                    block_type = 'coal' if random.random() < 0.09 + depth*0.008 else 'stone'
+                elif depth <= 16:
+                    r = random.random()
+                    if r < 0.07 + depth*0.003:     block_type = 'coal'
+                    elif r < 0.12 + depth*0.004:   block_type = 'iron'
+                    else:                           block_type = 'stone'
+                else:
+                    r = random.random()
+                    if   r < 0.04:                  block_type = 'coal'
+                    elif r < 0.09:                  block_type = 'iron'
+                    elif r < 0.13:                  block_type = 'gold'
+                    elif r < 0.17 and biome == "mountain": block_type = 'diamond'
+                    else:                           block_type = 'stone'
                 
                 hexagon = Hexagon(x, y, HEX_SIZE, block_type)
                 chunk.add_hexagon(x, y, hexagon)
+
+    # Procedural generation shouldn't mark the chunk as user-modified
+    Chunk.modified = False
     
     def get_nearby_hexagons(self, center_x, center_y, radius=200):
         nearby = []
@@ -324,27 +317,25 @@ class World:
         
         for chunk_x in range(min_chunk_x - 1, max_chunk_x + 2):
             for chunk_y in range(min_chunk_y - 1, max_chunk_y + 2):
-                if (chunk_x, chunk_y) in self.chunks:
-                    chunk = self.chunks[(chunk_x, chunk_y)]
-                    chunk.last_accessed = time.time()
-                    
-                    for hexagon in chunk.hexagons.values():
-                        if abs(hexagon.x - center_x) <= radius + HEX_SIZE and abs(hexagon.y - center_y) <= radius + HEX_SIZE:
-                            nearby.append(hexagon)
+                chunk = self.get_chunk(chunk_x, chunk_y)
+                chunk.last_accessed = time.time()
+
+                for hexagon in chunk.hexagons.values():
+                    if abs(hexagon.x - center_x) <= radius + HEX_SIZE and abs(hexagon.y - center_y) <= radius + HEX_SIZE:
+                        nearby.append(hexagon)
         
         return nearby
     
-    def get_hexagon_at(self, x, y):
-        chunk_x, chunk_y = self.get_chunk_coords(x, y)
-        if (chunk_x, chunk_y) in self.chunks:
-            return self.chunks[(chunk_x, chunk_y)].get_hexagon(x, y)
-        return None
+    def get_hexagon_at(self, wx, wy):
+        cx, cy, _, _ = pixel_to_hex_center(wx, wy)
+        chunk_x, chunk_y = self.get_chunk_coords(cx, cy)
+        chunk = self.get_chunk(chunk_x, chunk_y)
+        return chunk.get_hexagon(cx, cy)   # now passing snapped center
     
     def remove_hexagon_at(self, x, y):
         chunk_x, chunk_y = self.get_chunk_coords(x, y)
-        if (chunk_x, chunk_y) in self.chunks:
-            return self.chunks[(chunk_x, chunk_y)].remove_hexagon(x, y)
-        return False
+        chunk = self.get_chunk(chunk_x, chunk_y)
+        return chunk.remove_hexagon(x, y)
     
     def add_hexagon_at(self, x, y, block_type):
         chunk_x, chunk_y = self.get_chunk_coords(x, y)
@@ -828,58 +819,36 @@ class Game:
         world_mx = mouse_pos[0] + self.camera_x
         world_my = mouse_pos[1] + self.camera_y
         
-        selected_block = self.player.get_selected_block()
+        selected = self.player.get_selected_block()
         
-        # In creative mode, we have infinite blocks
-        if self.game_mode == "creative":
-            # Use raycasting to find where to place
-            target_block, place_pos = self.raycast_to_block(self.player.x, self.player.y, world_mx, world_my)
+        # Snap target position to nearest hex center
+        place_x, place_y, _, _ = pixel_to_hex_center(world_mx, world_my)
+        
+        # Distance checks
+        dx = self.player.x - place_x
+        dy = self.player.y - place_y
+        dist_sq = dx*dx + dy*dy
+        
+        if dist_sq > MINING_RANGE**2:
+            if self.game_mode != "creative":
+                self.player.add_to_inventory(selected)
+            return
             
-            if place_pos:
-                place_x, place_y = place_pos
-                
-                # Check if position is valid (not overlapping player or too far)
-                dx = self.player.x - place_x
-                dy = self.player.y - place_y
-                if dx * dx + dy * dy > MINING_RANGE * MINING_RANGE:
-                    return
-                
-                # Check if not overlapping player
-                if dx * dx + dy * dy < (HEX_SIZE + self.player.radius) ** 2:
-                    return
-                
-                # Check if there's already a block there
-                existing = self.world.get_hexagon_at(place_x, place_y)
-                if existing:
-                    return
-                
-                self.world.add_hexagon_at(place_x, place_y, selected_block)
-        else:
-            # Survival mode requires inventory
-            if not self.player.remove_from_inventory(selected_block):
-                return
+        if dist_sq < (HEX_SIZE + self.player.radius)**2 * 0.8:  # too close to player
+            if self.game_mode != "creative":
+                self.player.add_to_inventory(selected)
+            return
             
-            target_block, place_pos = self.raycast_to_block(self.player.x, self.player.y, world_mx, world_my)
+        if self.world.get_hexagon_at(place_x, place_y) is not None:
+            if self.game_mode != "creative":
+                self.player.add_to_inventory(selected)
+            return
             
-            if place_pos:
-                place_x, place_y = place_pos
-                
-                dx = self.player.x - place_x
-                dy = self.player.y - place_y
-                if dx * dx + dy * dy > MINING_RANGE * MINING_RANGE:
-                    self.player.add_to_inventory(selected_block)
-                    return
-                
-                if dx * dx + dy * dy < (HEX_SIZE + self.player.radius) ** 2:
-                    self.player.add_to_inventory(selected_block)
-                    return
-                
-                existing = self.world.get_hexagon_at(place_x, place_y)
-                if existing:
-                    self.player.add_to_inventory(selected_block)
-                    return
-                
-                self.world.add_hexagon_at(place_x, place_y, selected_block)
+        # In survival: consume from inventory
+        if self.game_mode != "creative" and not self.player.remove_from_inventory(selected):
+            return
+            
+        self.world.add_hexagon_at(place_x, place_y, selected)
 
     def update_game(self):
         keys = pygame.key.get_pressed()
