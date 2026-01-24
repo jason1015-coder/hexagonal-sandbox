@@ -26,7 +26,7 @@
     ```
 3.  **Run the Game**:
     ```bash
-    python main.py
+    python3 main.py
     ```
 
 ---
