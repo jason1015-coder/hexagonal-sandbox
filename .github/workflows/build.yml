@@ -3,7 +3,7 @@ name: Build TesselBox Executables
 on:
   push:
     tags:
-      - 'v*' # Trigger on version tags (e.g., v1.0.0)
+      - 'v*'
 
 jobs:
   build:
@@ -28,7 +28,7 @@ jobs:
       - name: Build executable
         run: |
           pyinstaller --onefile --windowed main.py
-        # Replace "main.py" with your game's entry point.
+        # Replace "main.py" with your actual entry point.
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
