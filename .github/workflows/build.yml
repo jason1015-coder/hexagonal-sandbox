@@ -2,8 +2,7 @@ name: Build TesselBox Executables
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ main ]
 
 jobs:
   build:
