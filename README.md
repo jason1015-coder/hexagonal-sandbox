@@ -2,7 +2,7 @@
 
 **Tesselbox** is an enhanced, hexagon-based sandbox exploration game built with Python and Pygame. It features a procedurally generated world with multiple biomes, mining mechanics, and a chunk-based rendering system for optimized performance.
 
-## recent update 
+## ❇️recent update 
 fixed the map showing error
 
 ## 🛠️ Installation
