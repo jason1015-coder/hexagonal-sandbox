@@ -16,26 +16,25 @@ fixed the map showing error
 
 You must run the build command on the operating system you are targeting (e.g., use Windows to make the .exe).
 
-    Install Dependencies: Open your terminal or command prompt and run:
+    #Install Dependencies: Open your terminal or command prompt and run:
     Bash
 
     pip install pygame numpy
     pip install pyinstaller
 
-    Verify File Structure: Ensure all three files are in the same directory:
+    #Verify File Structure: Ensure all three files are in the same directory:
 
-        main.py (The entry point)
+        #main.py (The entry point)
 
-        blocks.py
+        #blocks.py
 
-        item.py
+        #item.py
 
 📦 Create the Executable
 
-Run the following command in your terminal. This command works for both Windows PowerShell/CMD and Linux Terminal:
-'''Bash
+Run the following command in your terminal. This command works for both Windows PowerShell/CMD and Linux Terminal
 
-pyinstaller --onefile --windowed --name Tesselbox main.py
+    pyinstaller --onefile --windowed --name Tesselbox main.py
 
 ---
 
