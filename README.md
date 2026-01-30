@@ -2,7 +2,7 @@
 
 A 2D sandbox adventure game inspired by *Terraria*, but built on a **hexagonal grid**.
 
-Explore infinite worlds, mine resources, build structures, craft items, fight enemies, and survive — all in beautiful hex tiles.
+Explore worlds, mine resources, build structures, craft items, fight enemies, and survive — all in beautiful hex tiles.
 
 ![Game screenshot placeholder](https://via.placeholder.com/800x450.png?text=TesselBox+Gameplay+Screenshot+Coming+Soon)  
 *(Screenshots will be added once gameplay is more complete)*
