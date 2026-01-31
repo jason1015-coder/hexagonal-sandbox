@@ -4,24 +4,17 @@ A 2D sandbox adventure game inspired by *Terraria*, but built on a **hexagonal g
 
 Explore worlds, mine resources, build structures, craft items, fight enemies, and survive — all in beautiful hex tiles.
 
-![Game screenshot placeholder](https://via.placeholder.com/800x450.png?text=TesselBox+Gameplay+Screenshot+Coming+Soon)  
-*(Screenshots will be added once gameplay is more complete)*
 
 ## Migration Notice
 
 **Sorry!**  
-The game is currently migrating from a pure-Python prototype to a **Golang + Python hybrid** structure.  
-This refactor improves performance (Go for core engine/world/physics) while keeping Python for game logic, scripting, and easier modding.  
+The game is currently migrating from a pure-Python prototype to a **Golang ** language  
+This refactor improves performance (Go for core engine/world/physics) 
 
 Expect some features to be temporarily broken or incomplete during this phase.  
 Thanks for your patience — progress is ongoing!
 
-## Current Status
 
-- Early development / heavy refactoring
-- ~87% Python, ~13% Rust (as of Jan 2026)
-- Basic hex world gen and rendering exist in parts
-- No full gameplay loop yet — focus is on engine foundation
 
 ## Installation
 
@@ -35,9 +28,7 @@ Thanks for your patience — progress is ongoing!
    - **macOS**: `TesselBox.app.zip` → unzip and open the .app
 4. Launch the file — no installation needed!
 
-**Current status (January 30, 2026):**  
-Releases exist (2 tags/pre-releases), but **no binary assets are attached yet**.  
-We're setting up automated builds to attach .exe / AppImage / .app files soon.
+
 
 ### Temporary: Download Latest Build from GitHub Actions (Nightly-ish Builds)
 
