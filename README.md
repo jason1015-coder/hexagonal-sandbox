@@ -51,28 +51,7 @@ While official release binaries are pending:
 
 This gives you the freshest compiled version directly from recent commits.
 
-### Development / Run from Source
 
-If you want to contribute, test bleeding-edge code, or modify the game:
 
-**Prerequisites**
-- Git
-- Python 3.11+
-- Rust stable toolchain [](https://rustup.rs)
 
-**Steps**
-```bash
-git clone https://github.com/tesselstudio/TesselBox-game.git
-cd TesselBox-game
 
-# Python side (legacy / high-level logic)
-cd "python files"                  # adjust folder name if different
-python -m venv venv
-source venv/bin/activate           # Windows: venv\Scripts\activate
-pip install pygame                 # add other deps from requirements.txt when created
-python main.py                     # replace with actual entry point file
-
-# Rust side (core engine – still WIP integration)
-cd ../rust_engine                  # adjust if folder name differs
-cargo build --release
-# Run Rust binary (once bridged): cargo run --release
