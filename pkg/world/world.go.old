@@ -1,0 +1,313 @@
+package world
+
+import (
+	"fmt"
+	"math"
+	"sync"
+	
+	"github.com/ninjatech/tesselbox-go/pkg/biomes"
+	"github.com/ninjatech/tesselbox-go/pkg/blocks"
+	"github.com/ninjatech/tesselbox-go/pkg/hexagon"
+	"github.com/ninjatech/tesselbox-go/pkg/organisms"
+)
+
+const (
+	ChunkSize    = 32
+	HexSize      = 30.0
+	WorldHeight  = 64
+	RenderDistance = 4
+)
+
+// Chunk represents a chunk of the world
+type Chunk struct {
+	ID           hexagon.ChunkID
+	Blocks       map[string]*Block
+	Organisms    map[string]*organisms.Organism
+	Generated    bool
+	Dirty        bool
+	mu           sync.RWMutex
+}
+
+// Block represents a block in the world
+type Block struct {
+	Type       string
+	Hex        hexagon.Hexagon
+	X, Y       float64
+	Health     float64
+	MaxHealth  float64
+	Properties *blocks.BlockProperties
+}
+
+// World represents the game world
+type World struct {
+	Chunks      map[hexagon.ChunkID]*Chunk
+	Noise       *biomes.SimplexNoise
+	Seed        float64
+	mu          sync.RWMutex
+}
+
+// NewWorld creates a new world
+func NewWorld(seed float64) *World {
+	return &World{
+		Chunks: make(map[hexagon.ChunkID]*Chunk),
+		Noise:  biomes.NewSimplexNoise(seed),
+		Seed:   seed,
+	}
+}
+
+// GetChunk returns a chunk, generating it if it doesn't exist
+func (w *World) GetChunk(chunkID hexagon.ChunkID) *Chunk {
+	w.mu.RLock()
+	chunk, exists := w.Chunks[chunkID]
+	w.mu.RUnlock()
+	
+	if exists {
+		return chunk
+	}
+	
+	// Generate new chunk
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	
+	// Check again in case another goroutine created it
+	if chunk, exists := w.Chunks[chunkID]; exists {
+		return chunk
+	}
+	
+	chunk = &Chunk{
+		ID:        chunkID,
+		Blocks:    make(map[string]*Block),
+		Organisms: make(map[string]*organisms.Organism),
+		Generated: false,
+		Dirty:     true,
+	}
+	w.Chunks[chunkID] = chunk
+	
+	return chunk
+}
+
+// GenerateChunk generates the terrain for a chunk
+func (c *Chunk) Generate(noise *biomes.SimplexNoise) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	
+	if c.Generated {
+		return
+	}
+	
+	// Generate hexagonal grid for the chunk
+	for dq := 0; dq < ChunkSize; dq++ {
+		for dr := 0; dr < ChunkSize; dr++ {
+			worldQ := c.ID.X*ChunkSize + dq
+			worldR := c.ID.Y*ChunkSize + dr
+			hex := hexagon.AxialToHex(worldQ, worldR)
+			
+			x, y := hexagon.HexToPixel(hex, HexSize)
+			x += float64(c.ID.X) * ChunkSize * HexSize * 3.0/2.0
+			y += float64(c.ID.Y) * ChunkSize * HexSize * math.Sqrt(3.0)
+			
+			// Get biome at this position
+			biome := biomes.GetBiomeAtPosition(x, y, noise)
+			surfaceHeight := int(biomes.GetSurfaceHeightVariation(x, y, noise) + WorldHeight/2)
+			
+			// Generate vertical column
+			for dy := 0; dy < WorldHeight; dy++ {
+				var blockType string
+				yPos := y - float64(dy)*HexSize*1.5
+				
+				if dy > surfaceHeight {
+					blockType = "air"
+				} else if dy == surfaceHeight {
+					blockType = biomes.GetBiomeBlock(biome)
+				} else if dy > surfaceHeight-4 {
+					blockType = biomes.GetBiomeUnderBlock(biome)
+				} else if dy == 0 {
+					blockType = "bedrock"
+				} else {
+					blockType = "stone"
+					
+					// Check for ores
+					depth := surfaceHeight - dy
+					if biomes.ShouldSpawnOre(depth, x, yPos, noise, "coal_ore") {
+						blockType = "coal_ore"
+					} else if biomes.ShouldSpawnOre(depth, x, yPos, noise, "iron_ore") {
+						blockType = "iron_ore"
+					} else if biomes.ShouldSpawnOre(depth, x, yPos, noise, "gold_ore") {
+						blockType = "gold_ore"
+					} else if biomes.ShouldSpawnOre(depth, x, yPos, noise, "diamond_ore") {
+						blockType = "diamond_ore"
+					}
+				}
+				
+				if blockType != "air" {
+					blockKey := fmt.Sprintf("%d_%d_%d", worldQ, worldR, dy)
+					block := &Block{
+						Type:      blockType,
+						Hex:       hex,
+						X:         x,
+						Y:         yPos,
+						Health:    100.0,
+						MaxHealth: 100.0,
+					}
+					
+					if props, ok := blocks.BlockDefinitions[blockType]; ok {
+						block.Properties = props
+					}
+					
+					c.Blocks[blockKey] = block
+				}
+			}
+			
+			// Spawn organisms on surface
+			if biomes.ShouldSpawnTree(x, y, noise) {
+				orgHex := hexagon.AxialToHex(worldQ, worldR)
+				org := organisms.CreateOrganism(organisms.TREE, x, y, orgHex)
+				if org != nil {
+					c.Organisms[org.ID] = org
+				}
+			}
+		}
+	}
+	
+	c.Generated = true
+	c.Dirty = true
+}
+
+// GetBlock returns a block at the given hex coordinates and depth
+func (w *World) GetBlock(hex hexagon.Hexagon, depth int) *Block {
+	chunkID := hexagon.HexToChunk(hex, ChunkSize)
+	chunk := w.GetChunk(chunkID)
+	
+	chunk.mu.RLock()
+	defer chunk.mu.RUnlock()
+	
+	blockKey := fmt.Sprintf("%d_%d_%d", hex.Q, hex.R, depth)
+	return chunk.Blocks[blockKey]
+}
+
+// SetBlock sets a block at the given hex coordinates and depth
+func (w *World) SetBlock(hex hexagon.Hexagon, depth int, blockType string) {
+	chunkID := hexagon.HexToChunk(hex, ChunkSize)
+	chunk := w.GetChunk(chunkID)
+	
+	chunk.mu.Lock()
+	defer chunk.mu.Unlock()
+	
+	blockKey := fmt.Sprintf("%d_%d_%d", hex.Q, hex.R, depth)
+	
+	if blockType == "air" {
+		delete(chunk.Blocks, blockKey)
+	} else {
+		x, y := hexagon.HexToPixel(hex, HexSize)
+		y -= float64(depth) * HexSize * 1.5
+		
+		block := &Block{
+			Type:      blockType,
+			Hex:       hex,
+			X:         x,
+			Y:         y,
+			Health:    100.0,
+			MaxHealth: 100.0,
+		}
+		
+		if props, ok := blocks.BlockDefinitions[blockType]; ok {
+			block.Properties = props
+		}
+		
+		chunk.Blocks[blockKey] = block
+	}
+	
+	chunk.Dirty = true
+}
+
+// GetChunksInRange returns chunks within render distance of a position
+func (w *World) GetChunksInRange(x, y float64) []*Chunk {
+	centerHex := hexagon.HexRound(hexagon.PixelToHex(x, y, HexSize))
+	centerChunkID := hexagon.HexToChunk(centerHex, ChunkSize)
+	
+	chunks := []*Chunk{}
+	
+	for dx := -RenderDistance; dx <= RenderDistance; dx++ {
+		for dy := -RenderDistance; dy <= RenderDistance; dy++ {
+			chunkID := hexagon.ChunkID{
+				X: centerChunkID.X + dx,
+				Y: centerChunkID.Y + dy,
+			}
+			
+			chunk := w.GetChunk(chunkID)
+			if !chunk.Generated {
+				chunk.Generate(w.Noise)
+			}
+			chunks = append(chunks, chunk)
+		}
+	}
+	
+	return chunks
+}
+
+// GetVisibleBlocks returns all visible blocks in range
+func (w *World) GetVisibleBlocks(x, y float64) []*Block {
+	blocks := []*Block{}
+	chunks := w.GetChunksInRange(x, y)
+	
+	for _, chunk := range chunks {
+		chunk.mu.RLock()
+		for _, block := range chunk.Blocks {
+			if block.Type != "air" {
+				blocks = append(blocks, block)
+			}
+		}
+		chunk.mu.RUnlock()
+	}
+	
+	return blocks
+}
+
+// DamageBlock damages a block, returns true if destroyed
+func (w *World) DamageBlock(hex hexagon.Hexagon, depth int, amount float64) bool {
+	block := w.GetBlock(hex, depth)
+	if block == nil || block.Type == "air" {
+		return false
+	}
+	
+	if block.Properties != nil && block.Properties.Hardness < 0 {
+		return false // Unbreakable
+	}
+	
+	chunkID := hexagon.HexToChunk(hex, ChunkSize)
+	chunk := w.GetChunk(chunkID)
+	
+	chunk.mu.Lock()
+	defer chunk.mu.Unlock()
+	
+	blockKey := fmt.Sprintf("%d_%d_%d", hex.Q, hex.R, depth)
+	block = chunk.Blocks[blockKey]
+	
+	if block == nil {
+		return false
+	}
+	
+	hardness := 1.0
+	if block.Properties != nil {
+		hardness = block.Properties.Hardness
+	}
+	
+	block.Health -= amount / hardness
+	block.Health = max(block.Health, 0)
+	
+	if block.Health <= 0 {
+		// Block destroyed
+		delete(chunk.Blocks, blockKey)
+		chunk.Dirty = true
+		return true
+	}
+	
+	return false
+}
+
+func max(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
